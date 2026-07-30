@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "code/JarLauncher.py"
+      - "version.txt"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -11,79 +12,107 @@ permissions:
 
 jobs:
 
-  build-windows:
-    runs-on: windows-latest
+  version:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Code herunterladen
         uses: actions/checkout@v4
 
-      - name: Python installieren
-        uses: actions/setup-python@v5
+      - name: Version erhöhen
+        id: version
+        run: |
+          VERSION=$(cat version.txt)
+
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          PATCH=$((PATCH + 1))
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+
+          echo $NEW_VERSION > version.txt
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Version speichern
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add version.txt
+          git commit -m "Update version to ${{ steps.version.outputs.version }}" || exit 0
+          git push
+
+
+
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: PyInstaller installieren
-        run: pip install pyinstaller
+      - run: pip install pyinstaller
 
-      - name: Programm bauen
-        run: |
+      - run: |
           pyinstaller --onefile --name JarLauncher-Windows --distpath launcher code/JarLauncher.py
 
-      - name: Datei speichern
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: Windows-App
           path: launcher/JarLauncher-Windows.exe
 
 
+
   build-linux:
+    needs: version
     runs-on: ubuntu-latest
 
     steps:
-      - name: Code herunterladen
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Python installieren
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: PyInstaller installieren
-        run: pip install pyinstaller
+      - run: pip install pyinstaller
 
-      - name: Programm bauen
-        run: |
+      - run: |
           pyinstaller --onefile --name JarLauncher-Linux --distpath launcher code/JarLauncher.py
 
-      - name: Datei speichern
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: Linux-App
           path: launcher/JarLauncher-Linux
 
 
+
   build-macos:
+    needs: version
     runs-on: macos-latest
 
     steps:
-      - name: Code herunterladen
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Python installieren
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: PyInstaller installieren
-        run: pip install pyinstaller
+      - run: pip install pyinstaller
 
-      - name: Programm bauen
-        run: |
+      - run: |
           pyinstaller --onefile --name JarLauncher-macOS --distpath launcher code/JarLauncher.py
 
-      - name: Datei speichern
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: macOS-App
           path: launcher/JarLauncher-macOS
@@ -92,6 +121,7 @@ jobs:
 
   release:
     needs:
+      - version
       - build-windows
       - build-linux
       - build-macos
@@ -107,8 +137,8 @@ jobs:
       - name: Release erstellen
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: JarLauncher v1.0.${{ github.run_number }}
+          tag_name: v${{ needs.version.outputs.version }}
+          name: JarLauncher v${{ needs.version.outputs.version }}
           generate_release_notes: true
           files: |
             Windows-App/JarLauncher-Windows.exe
