@@ -1,0 +1,87 @@
+name: Build Python App
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Code herunterladen
+        uses: actions/checkout@v4
+
+      - name: Python installieren
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: PyInstaller installieren
+        run: |
+          pip install pyinstaller
+
+      - name: Programm bauen
+        run: |
+          pyinstaller --onefile --name JarLauncher-Windows --distpath launcher code/JarLauncher.py
+
+      - name: Datei speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-App
+          path: launcher/JarLauncher-Windows.exe
+
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code herunterladen
+        uses: actions/checkout@v4
+
+      - name: Python installieren
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: PyInstaller installieren
+        run: |
+          pip install pyinstaller
+
+      - name: Programm bauen
+        run: |
+          pyinstaller --onefile --name JarLauncher-Linux --distpath launcher code/JarLauncher.py
+
+      - name: Datei speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-App
+          path: launcher/JarLauncher-Linux
+
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Code herunterladen
+        uses: actions/checkout@v4
+
+      - name: Python installieren
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: PyInstaller installieren
+        run: |
+          pip install pyinstaller
+
+      - name: Programm bauen
+        run: |
+          pyinstaller --onefile --name JarLauncher-macOS --distpath launcher code/JarLauncher.py
+
+      - name: Datei speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-App
+          path: launcher/JarLauncher-macOS
