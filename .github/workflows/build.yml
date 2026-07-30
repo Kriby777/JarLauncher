@@ -5,6 +5,7 @@ on:
     paths:
       - "code/JarLauncher.py"
       - "version.txt"
+      - "icons/**"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -61,10 +62,16 @@ jobs:
         with:
           python-version: "3.x"
 
-      - run: pip install pyinstaller
+      - name: PyInstaller installieren
+        run: pip install pyinstaller
 
-      - run: |
-          pyinstaller --onefile --name JarLauncher-Windows --distpath launcher code/JarLauncher.py
+      - name: Windows bauen
+        run: |
+          pyinstaller --onefile ^
+          --icon=icons/icon.ico ^
+          --name JarLauncher-Windows ^
+          --distpath launcher ^
+          code/JarLauncher.py
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,15 +91,52 @@ jobs:
         with:
           python-version: "3.x"
 
-      - run: pip install pyinstaller
+      - name: PyInstaller installieren
+        run: pip install pyinstaller
 
-      - run: |
-          pyinstaller --onefile --name JarLauncher-Linux --distpath launcher code/JarLauncher.py
+      - name: AppImage Tools installieren
+        run: |
+          sudo apt update
+          sudo apt install -y fuse libfuse2
+
+      - name: Linux Programm bauen
+        run: |
+          pyinstaller --onefile \
+          --name JarLauncher \
+          code/JarLauncher.py
+
+      - name: AppImage bauen
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          cp dist/JarLauncher AppDir/usr/bin/
+
+          cp icons/icon.png \
+          AppDir/usr/share/icons/hicolor/256x256/apps/JarLauncher.png
+
+          cat > AppDir/JarLauncher.desktop <<EOF
+          [Desktop Entry]
+          Name=JarLauncher
+          Comment=Java Launcher Tool
+          Exec=JarLauncher
+          Icon=JarLauncher
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          wget -q https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage
+
+          chmod +x appimagetool-x86_64.AppImage
+
+          ./appimagetool-x86_64.AppImage \
+          AppDir \
+          JarLauncher-Linux.AppImage
 
       - uses: actions/upload-artifact@v4
         with:
           name: Linux-App
-          path: launcher/JarLauncher-Linux
+          path: JarLauncher-Linux.AppImage
 
 
 
@@ -107,19 +151,26 @@ jobs:
         with:
           python-version: "3.x"
 
-      - run: pip install pyinstaller
+      - name: PyInstaller installieren
+        run: pip install pyinstaller
 
-      - run: |
-          pyinstaller --onefile --name JarLauncher-macOS --distpath launcher code/JarLauncher.py
+      - name: macOS bauen
+        run: |
+          pyinstaller --windowed \
+          --icon=icons/icon.icns \
+          --name JarLauncher \
+          --distpath launcher \
+          code/JarLauncher.py
 
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-App
-          path: launcher/JarLauncher-macOS
+          path: launcher/JarLauncher.app
 
 
 
   release:
+
     needs:
       - version
       - build-windows
@@ -134,7 +185,7 @@ jobs:
         uses: actions/download-artifact@v4
 
 
-      - name: Release erstellen
+      - name: GitHub Release erstellen
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.version.outputs.version }}
@@ -142,5 +193,5 @@ jobs:
           generate_release_notes: true
           files: |
             Windows-App/JarLauncher-Windows.exe
-            Linux-App/JarLauncher-Linux
-            macOS-App/JarLauncher-macOS
+            Linux-App/JarLauncher-Linux.AppImage
+            macOS-App/JarLauncher.app
