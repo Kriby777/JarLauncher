@@ -2,11 +2,8 @@ name: Build Python App
 
 on:
   push:
-    paths:
-      - "code/JarLauncher.py"
-      - "version.txt"
-      - "icons/**"
-      - ".github/workflows/build.yml"
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -23,31 +20,12 @@ jobs:
       - name: Code herunterladen
         uses: actions/checkout@v4
 
-      - name: Version erhöhen
+      - name: Version auslesen
         id: version
         run: |
           VERSION=$(cat version.txt)
 
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
-
-          PATCH=$((PATCH + 1))
-
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-
-          echo $NEW_VERSION > version.txt
-
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Version speichern
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git add version.txt
-          git commit -m "Update version to ${{ steps.version.outputs.version }}" || exit 0
-          git push
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
 
 
@@ -108,8 +86,11 @@ jobs:
 
           cp dist/JarLauncher AppDir/usr/bin/JarLauncher
 
-          cp icons/icon.png \
-          AppDir/usr/share/icons/hicolor/256x256/apps/JarLauncher.png
+          # AppImage Icon
+          cp icons/icon.png AppDir/JarLauncher.png
+
+          # Linux Icon Theme
+          cp icons/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/JarLauncher.png
 
           cat > AppDir/JarLauncher.desktop <<EOF
           [Desktop Entry]
@@ -162,14 +143,20 @@ jobs:
           --distpath launcher \
           code/JarLauncher.py
 
+      - name: macOS App packen
+        run: |
+          cd launcher
+          zip -r JarLauncher-macOS.zip JarLauncher.app
+
       - uses: actions/upload-artifact@v4
         with:
           name: macOS-App
-          path: launcher/JarLauncher.app
+          path: launcher/JarLauncher-macOS.zip
 
 
 
   release:
+
     needs:
       - version
       - build-windows
@@ -186,11 +173,13 @@ jobs:
 
       - name: GitHub Release erstellen
         uses: softprops/action-gh-release@v2
+
         with:
           tag_name: v${{ needs.version.outputs.version }}
           name: JarLauncher v${{ needs.version.outputs.version }}
           generate_release_notes: true
+
           files: |
             Windows-App/JarLauncher-Windows.exe
             Linux-App/JarLauncher-Linux.AppImage
-            macOS-App/JarLauncher.app
+            macOS-App/JarLauncher-macOS.zip
