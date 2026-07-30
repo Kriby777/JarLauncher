@@ -66,12 +66,7 @@ jobs:
         run: pip install pyinstaller
 
       - name: Windows bauen
-        run: |
-          pyinstaller --onefile ^
-          --icon=icons/icon.ico ^
-          --name JarLauncher-Windows ^
-          --distpath launcher ^
-          code/JarLauncher.py
+        run: pyinstaller --onefile --icon=icons/icon.ico --name JarLauncher-Windows --distpath launcher code/JarLauncher.py
 
       - uses: actions/upload-artifact@v4
         with:
@@ -97,7 +92,7 @@ jobs:
       - name: AppImage Tools installieren
         run: |
           sudo apt update
-          sudo apt install -y fuse libfuse2
+          sudo apt install -y libfuse2
 
       - name: Linux Programm bauen
         run: |
@@ -105,12 +100,13 @@ jobs:
           --name JarLauncher \
           code/JarLauncher.py
 
-      - name: AppImage bauen
+      - name: AppImage vorbereiten
         run: |
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
 
-          cp dist/JarLauncher AppDir/usr/bin/
+          cp dist/JarLauncher AppDir/usr/bin/JarLauncher
 
           cp icons/icon.png \
           AppDir/usr/share/icons/hicolor/256x256/apps/JarLauncher.png
@@ -125,11 +121,15 @@ jobs:
           Categories=Utility;
           EOF
 
+          cp AppDir/JarLauncher.desktop AppDir/usr/share/applications/
+
+      - name: AppImage erstellen
+        run: |
           wget -q https://github.com/AppImage/appimagetool/releases/latest/download/appimagetool-x86_64.AppImage
 
           chmod +x appimagetool-x86_64.AppImage
 
-          ./appimagetool-x86_64.AppImage \
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage \
           AppDir \
           JarLauncher-Linux.AppImage
 
@@ -170,7 +170,6 @@ jobs:
 
 
   release:
-
     needs:
       - version
       - build-windows
