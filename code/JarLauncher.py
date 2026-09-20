@@ -1,6 +1,5 @@
 import sys
 import subprocess
-import os
 
 if len(sys.argv) < 2:
     print("Keine JAR-Datei angegeben")
